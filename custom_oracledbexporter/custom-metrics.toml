@@ -1,0 +1,59 @@
+[[metric]]
+context = "slow_queries"
+metricsdesc = { p95_time_usecs= "Gauge metric with percentile 95 of elapsed time.", p99_time_usecs= "Gauge metric with percentile 99 of elapsed time." }
+request = "select  percentile_disc(0.95)  within group (order by elapsed_time) as p95_time_usecs, percentile_disc(0.99)  within group (order by elapsed_time) as p99_time_usecs from v$sql where last_active_time >= sysdate - 5/(24*60)"
+
+[[metric]]
+context = "big_queries"
+metricsdesc = { p95_rows= "Gauge metric with percentile 95 of returned rows.", p99_rows= "Gauge metric with percentile 99 of returned rows." }
+request = "select  percentile_disc(0.95)  within group (order by rownum) as p95_rows, percentile_disc(0.99)  within group (order by rownum) as p99_rows from v$sql where last_active_time >= sysdate - 5/(24*60)"
+
+[[metric]]
+context = "startup"
+metricsdesc = {time_seconds="Database startup time in seconds."}
+request = "SELECT (SYSDATE - STARTUP_TIME) * 24 * 60 * 60 AS time_seconds FROM V$INSTANCE"
+
+[[metric]]
+context = "dataguard_gap"
+labels = [ "instance_name", "last_appl" ]
+metricsdesc = { arc_diff = "info gap in dataguard." }
+request = '''
+SELECT (select instance_name from v$instance) instance_name, a.thread#, b. last_seq, a.applied_seq, a. last_appl, b.last_seq-a.applied_seq arc_diff
+FROM (SELECT thread#, MAX(sequence#) applied_seq, MAX(next_time) last_appl
+FROM gv$archived_log
+WHERE applied = 'YES' GROUP BY thread#) a,
+(SELECT thread#, MAX (sequence#) last_seq FROM gv$archived_log GROUP BY thread#) b
+WHERE a.thread# = b.thread#
+order by 1
+'''
+
+[[metric]]
+context = "backuprman_status"
+labels = [ "input_type", "status" ]
+metricsdesc = { backup_flag = "flag backup 1 is succes, 0 is failed." }
+request = '''
+select
+rs.INPUT_TYPE,
+rs.STATUS,
+TO_CHAR(START_TIME,'mm/dd/yy hh24:mi') start_time,
+TO_CHAR(END_TIME,'mm/dd/yy hh24:mi') end_time,
+case when rs.status = 'COMPLETED' then 1 else 0 end as backup_flag
+FROM V$RMAN_BACKUP_JOB_DETAILS rs
+order by rs.SESSION_KEY
+'''
+
+[[metric]]
+context = "uptime_db"
+labels = [ "instance_name" ]
+metricsdesc = { uptime_days = "uptime in days.", uptime_hours = "uptime in hours.", uptime_minutes = "uptime in minutes."  }
+request = '''
+SELECT instance_name,
+    floor(((sysdate-startup_time)*24*60*60)/3600/24) uptime_days,
+    floor ((floor(((sysdate-startup_time)*24*60*60)) -
+        floor(((sysdate-startup_time)*24*60*60)/3600/24)*24*60*60)/3600) uptime_hours,
+    floor(floor ((floor(((sysdate-startup_time)*24*60*60))
+        - floor(((sysdate-startup_time)*24*60*60)/3600/24)*24*60*60) -
+        ( floor ((floor(((sysdate-startup_time)*24*60*60)) -
+        floor(((sysdate-startup_time)*24*60*60)/3600/24)*24*60*60)/3600))*60*60)/60) uptime_minutes
+FROM v$instance
+'''

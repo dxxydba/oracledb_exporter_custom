@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  oracledb_exporter_custom:
+    image: oracledb_exporter_custom
+    container_name: oracledb_exporter_custom
+    ports:
+      - "9161:9161"
+    environment:
+      - DATA_SOURCE_NAME=${DATA_SOURCE_NAME}
+    networks:
+      - oracle-net
+
+networks:
+  oracle-net:
+    external: true
+
