@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  grafana:
+    image: grafana/grafana-oss:11.5.2
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - /dery_main/grafana_server:/var/lib/grafana
+    user: "472"
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    networks:
+      - oracle-net
+
+networks:
+  oracle-net:
+    external: true
